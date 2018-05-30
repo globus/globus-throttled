@@ -1,0 +1,49 @@
+Simple throttling daemon written in Python, using Tornado
+
+Uses an HTTP interface, non-blocking IO
+Typical performance is 1-3ms per call
+
+
+Accepts requests of the form POST /
+  {
+    "requester_id": String,
+    "resource_id": String|Integer,
+    "throttle_params": {
+      "bucket_max": Integer,
+      "fill_rate": Integer,
+      "bucket_start": Integer
+    }
+  }
+
+- requester_id [REQUIRED]:
+  Who are we throttling? Typically a Token.
+
+- resource_id [REQUIRED]:
+  What resource is being throttled? Typically an identifier for a
+  service + a resource on that service. Good examples include
+  "example.globus.org", "example.globus.org/route_name", and
+  "example:API:6fd91eb4-59a7-11e6-8bbc-005056c00001" -- format is
+  up to the developer using globus-throttled
+
+- throttle_params:
+  Arbitrary bucket of params to the throttler as a dict. Overrides
+  default parameters.
+
+
+
+Simple curl test:
+    $ for i in {0..100}; do curl -XPOST localhost:8888 --data '
+        {"requester_id": "foo", "resource_id": 3,
+         "throttle_params": {"fill_rate": 50}}
+    '; echo; done
+
+Example speed test:
+    >>> timeit.timeit(
+    ...     '''
+    ...     s.post("http://localhost:8888",
+    ...            data={"requester_id": "foo",
+    ...                  "resource_id": int(random.random()*1000000)})
+    ...     ''', setup='''
+    ...     import requests; import random; s = requests.Session()
+    ...     ''', number=10000)
+    21.692387104034424

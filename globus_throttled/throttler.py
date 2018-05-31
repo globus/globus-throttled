@@ -148,18 +148,29 @@ class Throttler(object):
             requester_id, resource_id, now, evaluated_params)
 
         if has_capacity:
+            print('"{}" "{}" allowed'.format(requester_id, resource_id))
             return {'allow_request': True, 'denial_details': None}
         else:
+            print('"{}" "{}" denied'.format(requester_id, resource_id))
             return {'allow_request': False,
                     'denial_details': 'No detail today!'}
 
     def cleanup(self):
+        if len(self._resource_buckets) == 0:
+            print('throttler empty; skip cleanup')
+            return
+
+        print('starting cleanup pass')
+
         # MARK
         marked = set()
+        total_items = 0
         for resource_id, bucket_collection in self._resource_buckets.items():
             for requester_id, item in bucket_collection.items():
+                total_items += 1
+
                 self._update_item(item, time.time(), item['last_params'])
-                if item['num_tokens'] >= item['bucket_max']:
+                if item['num_tokens'] >= item['last_params']['bucket_max']:
                     marked.add((resource_id, requester_id))
 
         # SWEEP
@@ -168,4 +179,5 @@ class Throttler(object):
             if len(self._resource_buckets[resource_id]) == 0:
                 self._resource_buckets.pop(resource_id, None)
 
-        return {'success': True, 'num_items': len(marked)}
+        print('cleanup done. total: {} removed: {}'
+              .format(total_items, len(marked)))
